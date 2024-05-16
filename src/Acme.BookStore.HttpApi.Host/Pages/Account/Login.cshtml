@@ -1,0 +1,94 @@
+﻿@page
+@{
+    var hasError = Model.Request.Query.ContainsKey("Error");
+    var isRedirecting = !Model.ReturnUrl.IsNullOrEmpty();
+    if (isRedirecting)
+    {
+        Layout = null;
+    }
+}
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@addTagHelper *, Volo.Abp.AspNetCore.Mvc.UI
+@addTagHelper *, Volo.Abp.AspNetCore.Mvc.UI.Bootstrap
+@addTagHelper *, Volo.Abp.AspNetCore.Mvc.UI.Bundling
+
+@using Microsoft.AspNetCore.Mvc.Localization
+@using Volo.Abp.Account.Localization
+@using Volo.Abp.Account.Settings
+@using Volo.Abp.Settings
+
+@model Acme.BookStore.Pages.Account.CustomLoginModel;
+@inject IHtmlLocalizer<AccountResource> L
+@inject Volo.Abp.Settings.ISettingProvider SettingProvider
+@inject Volo.Abp.Users.ICurrentUser CurrentUser
+
+@if (!isRedirecting && Model.EnableLocalLogin)
+{
+    <form method="post" class="mt-4">
+        <div class="mb-3">
+            <label asp-for="LoginInput.UserNameOrEmailAddress" class="form-label"></label>
+            <input asp-for="LoginInput.UserNameOrEmailAddress" class="form-control" />
+            <span asp-validation-for="LoginInput.UserNameOrEmailAddress" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="LoginInput.Password" class="form-label"></label>
+            <input asp-for="LoginInput.Password" class="form-control" />
+            <span asp-validation-for="LoginInput.Password" class="text-danger"></span>
+        </div>
+        <abp-row>
+            <abp-column>
+                <abp-input asp-for="LoginInput.RememberMe" class="mb-4" />
+            </abp-column>
+            <abp-column class="text-end">
+                <a href="@Url.Page("./ForgotPassword", new {returnUrl = Model.ReturnUrl, returnUrlHash = Model.ReturnUrlHash})">@L["ForgotPassword"]</a>
+            </abp-column>
+        </abp-row>
+        <div class="d-grid gap-2">
+            <abp-button type="submit" button-type="Primary" name="Action" value="Login" class="btn-lg mt-3">@L["Login"]</abp-button>
+            @if (Model.ShowCancelButton)
+            {
+                <abp-button type="submit" button-type="Secondary" formnovalidate="formnovalidate" name="Action" value="Cancel" class="btn-lg mt-3">@L["Cancel"]</abp-button>
+            }
+        </div>
+    </form>
+}
+
+@if (Model.VisibleExternalProviders.Any())
+{
+    <form style="@(isRedirecting ? "visibility:hidden" : null)" asp-page="./Login" asp-page-handler="ExternalLogin" asp-route-returnUrl="@Model.ReturnUrl" asp-route-returnUrlHash="@Model.ReturnUrlHash" method="post">
+
+        <input type="email" name="emailId" class="form-control" /><br />
+        <button id="formBtnId" type="submit" class="btn btn-success m-1" name="provider" value="OpenIdConnect" title="OpenIdConnect">
+           Vishnu's Custom SSO Btn
+        </button>
+        @foreach (var provider in Model.VisibleExternalProviders)
+        {
+            <abp-alert abp-if="hasError" alert-type="Danger" style="margin-top: 3rem">
+                @{
+                    var errMsg = Model.Request.Query["Error"];
+                }
+                @switch (errMsg)
+                {
+                    case "no-apbUserRepo":
+                        @:User not registered!
+                        break;
+                    default:
+                        break;
+                }
+            </abp-alert>
+
+            <button id="formBtnId" type="submit" class="btn btn-primary m-1" name="provider" value="@provider.AuthenticationScheme" title="@L["LogInUsingYourProviderAccount", provider.DisplayName]">
+                @provider.DisplayName -@provider.AuthenticationScheme.ToString();
+
+            </button>
+
+        }
+    </form>
+
+    if (isRedirecting && !hasError)
+    {
+        <script type="text/javascript">
+            document.getElementById("formBtnId").click()
+        </script>
+    }
+}
